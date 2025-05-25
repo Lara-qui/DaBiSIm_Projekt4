@@ -1,3 +1,14 @@
+#0. Check ob Pakete installiert wurden
+try:
+    from Bio.PDB import PDBParser
+except ImportError:
+    raise ImportError("Das Modul 'biopython' fehlt. Bitte installieren mit:\n    pip install biopython")
+
+try:
+    import streamlit as st
+except ImportError:
+    raise ImportError("Das Modul 'streamlit' fehlt. Bitte installieren mit:\n    pip install streamlit")
+    
 #1. Import und Setup
 from Bio.PDB import PDBParser
 import matplotlib.pyplot as plt
