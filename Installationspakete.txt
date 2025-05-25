@@ -1,0 +1,5 @@
+# Bevor die App ausgeführt werden kann müssen folgende Pakete installiert sein
+biopython
+matplotlib
+periodictable
+streamlit
