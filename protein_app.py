@@ -1,3 +1,4 @@
+#1. Import und Setup
 from Bio.PDB import PDBParser
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -6,6 +7,7 @@ import streamlit as st
 import tempfile
 import os
 
+#2. Definition von OOP-Klassenstruktur
 class Atom:
     def __init__(self, element, coord):
         self.element = element
@@ -47,6 +49,7 @@ class Protein:
     def calculate_molecular_weight(self):
         return sum(atom.get_mass() for atom in self.get_all_atoms())
 
+#3. Parser Funktion
 def parse_pdb(pdb_file):
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure("protein", pdb_file)
@@ -66,6 +69,7 @@ def parse_pdb(pdb_file):
             protein.add_chain(c)
     return protein
 
+# 4. Visualisierung der Proteinstruktur
 def visualize_protein_3d(protein):
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
@@ -81,6 +85,7 @@ def visualize_protein_3d(protein):
     ax.set_title(f"3D-Struktur von {protein.name}")
     st.pyplot(fig)
 
+#5. Streamlit GUI
 def run_gui():
     st.title("Proteinstruktur-Analyse")
     st.write("Lade eine PDB-Datei hoch:")
