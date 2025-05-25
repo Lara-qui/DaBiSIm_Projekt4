@@ -1,5 +1,2 @@
-# Bevor die App ausgeführt werden kann müssen folgende Pakete installiert sein
-biopython
-matplotlib
-periodictable
-streamlit
+# Bevor die App ausgeführt werden kann müssen folgende Pakete installiert sein, mit folgendem Befehl: 
+# pip install biopython streamlit matplotlib periodictable
