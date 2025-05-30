@@ -50,6 +50,13 @@ class Protein:
         return sum(atom.get_mass() for atom in self.get_all_atoms())
 
 #3. Parser Funktion
+def extract_title_from_pdb(file_path):             # Proteinname extrahieren
+    with open(file_path, 'r') as f:
+        for line in f:
+            if line.startswith("TITLE"):
+                return line[10:].strip()
+    return "Unbekannter Proteinname"
+
 def parse_pdb(pdb_file):
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure("protein", pdb_file)
@@ -98,6 +105,8 @@ def run_gui():
             tmp_path = tmp.name
 
         protein = parse_pdb(tmp_path)
+        title = extract_title_from_pdb(tmp_path)
+        st.info(f"**Proteinname:** {title}")
         weight = protein.calculate_molecular_weight()
         st.success(f"Molekulargewicht: {weight:.2f} Da")
         st.write("### 3D-Struktur")
