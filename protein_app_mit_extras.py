@@ -191,3 +191,5 @@ def run_gui():
 
         st.write("### 3D-Struktur")
         visualize_protein_3d(protein, selected_chains, selected_elements)
+if __name__ == '__main__':
+    run_gui()
