@@ -1,4 +1,4 @@
-#1. Import und Setup
+# Import und Setup
 from Bio.PDB import PDBParser
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -7,10 +7,10 @@ import streamlit as st
 import tempfile
 import os
 
-#2. Definition von OOP-Klassenstruktur
+# Definition von OOP-Klassenstruktur
 class Atom:
     def __init__(self, element, coord):
-        self.element = element
+        self.element = element.capitalize()
         self.coord = coord
 
     def get_mass(self):
@@ -49,12 +49,13 @@ class Protein:
     def calculate_molecular_weight(self):
         return sum(atom.get_mass() for atom in self.get_all_atoms())
 
-#3. Parser Funktion
-def extract_title_from_pdb(file_path):          # den richtigen Namen des Proteins extrahieren
+# Parser Funktion
+
+def extract_title_from_pdb(file_path):
     with open(file_path, 'r') as f:
         for line in f:
             if line.startswith("TITLE"):
-                return line[10:].strip()
+                return line[10:].strip().capitalize()
     return "Unbekannter Proteinname"
 
 def parse_pdb(pdb_file):
@@ -76,13 +77,14 @@ def parse_pdb(pdb_file):
             protein.add_chain(c)
     return protein
 
-# 4. Visualisierung der Proteinstruktur
-def visualize_protein_3d(protein, selected_chains=None, selected_elements=None):        # Erstellen einer 3D-rotierbaren Struktur, in der auch Elemente und Ketten getrennt dargestellt sind
+# Visualisierung der Proteinstruktur
+
+def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode):
     import plotly.graph_objects as go
     import numpy as np
     from collections import defaultdict
 
-    atoms_by_chain_and_element = defaultdict(list)
+    atoms_by_group = defaultdict(list)
 
     for chain in protein.chains:
         if selected_chains and chain.chain_id not in selected_chains:
@@ -91,7 +93,8 @@ def visualize_protein_3d(protein, selected_chains=None, selected_elements=None):
             for atom in residue.atoms:
                 if selected_elements and atom.element not in selected_elements:
                     continue
-                atoms_by_chain_and_element[(chain.chain_id, atom.element)].append(atom.coord)
+                key = atom.element if color_mode == "Nach Element" else chain.chain_id
+                atoms_by_group[(key, chain.chain_id, atom.element)].append(atom.coord)
 
     element_colors = {
         'H': 'white', 'C': 'gray', 'N': 'blue', 'O': 'red', 'S': 'yellow',
@@ -99,35 +102,28 @@ def visualize_protein_3d(protein, selected_chains=None, selected_elements=None):
         'Na': 'cyan', 'K': 'violet', 'Ca': 'lime', 'Mg': 'teal'
     }
 
-    fig = go.Figure()
-    chain_colors = {}
     chain_palette = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+    chain_colors = {}
+    fig = go.Figure()
 
-    for i, ((chain_id, element), coords) in enumerate(atoms_by_chain_and_element.items()):
+    for i, ((group, chain_id, element), coords) in enumerate(atoms_by_group.items()):
         coords = np.array(coords)
-        if len(coords) == 0:
-            continue
-
-        element_color = element_colors.get(element, 'black')
-
-        if chain_id not in chain_colors:
-            chain_colors[chain_id] = chain_palette[len(chain_colors) % len(chain_palette)]
+        if color_mode == "Nach Element":
+            color = element_colors.get(group, 'black')
+        else:
+            if group not in chain_colors:
+                chain_colors[group] = chain_palette[len(chain_colors) % len(chain_palette)]
+            color = chain_colors[group]
 
         fig.add_trace(go.Scatter3d(
-            x=coords[:, 0],
-            y=coords[:, 1],
-            z=coords[:, 2],
+            x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
             mode='markers',
-            marker=dict(
-                size=4,
-                color=element_color,
-                line=dict(width=1, color=chain_colors[chain_id])
-            ),
-            name=f'Chain {chain_id} - {element}'
+            marker=dict(size=4, color=color),
+            name=f'Kette {chain_id} - {element}'
         ))
 
     fig.update_layout(
-        title='Proteinstruktur: Ketten & Elemente',
+        title='3D-Struktur: Ketten & Elemente',
         width=800,
         height=700,
         scene=dict(xaxis_title='X', yaxis_title='Y', zaxis_title='Z'),
@@ -136,14 +132,20 @@ def visualize_protein_3d(protein, selected_chains=None, selected_elements=None):
 
     st.plotly_chart(fig)
 
-#5. Streamlit GUI
+# Streamlit GUI
+
 def run_gui():
     st.title("Proteinstruktur-Analyse")
     st.write("Lade eine PDB-Datei hoch:")
 
+    if st.button("Zurücksetzen"):
+        for key in st.session_state.keys():
+            del st.session_state[key]
+        st.experimental_rerun()
+
     uploaded_file = st.file_uploader("Wähle eine PDB-Datei", type="pdb")
 
-    if uploaded_file is not None:
+    if uploaded_file:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdb") as tmp:
             tmp.write(uploaded_file.read())
             tmp_path = tmp.name
@@ -155,17 +157,22 @@ def run_gui():
         weight = protein.calculate_molecular_weight()
         st.success(f"Molekulargewicht: {weight:.2f} Da")
 
-        # Get unique chains and elements
         all_chains = sorted(set(chain.chain_id for chain in protein.chains))
         all_elements = sorted(set(atom.element for atom in protein.get_all_atoms()))
 
-        selected_chains = st.multiselect("Wähle Ketten aus:", options=all_chains, default=all_chains)
-        selected_elements = st.multiselect("Wähle Elemente aus:", options=all_elements, default=all_elements)
+        if len(all_chains) > 1:
+            if "selected_chains" not in st.session_state:
+                st.session_state.selected_chains = all_chains
+            selected_chains = st.multiselect("Wähle Ketten aus:", options=all_chains, default=st.session_state.selected_chains, key="selected_chains")
+        else:
+            selected_chains = all_chains
+
+        selected_elements = st.multiselect("Wähle Elemente aus:", options=all_elements, default=all_elements, key="selected_elements")
+
+        color_mode = st.radio("Farbmodus für Visualisierung:", ["Nach Kette", "Nach Element"], key="color_mode")
 
         st.write("### 3D-Struktur")
-        visualize_protein_3d(protein, selected_chains, selected_elements)
+        visualize_protein_3d(protein, selected_chains, selected_elements, color_mode)
 
 if __name__ == '__main__':
     run_gui()
-#plotly einfügen, dropdown menü?
-#verschiedene Elemente und Ketten darstellen?
