@@ -1,16 +1,17 @@
-# Import und Setup
-from Bio.PDB import PDBParser
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from periodictable import elements
-import streamlit as st
-import tempfile
+# 1. Imports und Setup
 import os
+import tempfile
+import numpy as np
+import streamlit as st
+from Bio.PDB import PDBParser
+from periodictable import elements
+import plotly.graph_objects as go
+from collections import defaultdict
 
-# Definition von OOP-Klassenstruktur
+# 2. Datenklassen für Proteinstruktur
 class Atom:
     def __init__(self, element, coord):
-        self.element = element.capitalize()
+        self.element = element
         self.coord = coord
 
     def get_mass(self):
@@ -49,8 +50,7 @@ class Protein:
     def calculate_molecular_weight(self):
         return sum(atom.get_mass() for atom in self.get_all_atoms())
 
-# Parser Funktion
-
+# 3. PDB Parsen und Titel extrahieren
 def extract_title_from_pdb(file_path):
     with open(file_path, 'r') as f:
         for line in f:
@@ -70,20 +70,14 @@ def parse_pdb(pdb_file):
                 r = Residue(residue.resname)
                 for atom in residue:
                     element = atom.element.strip().capitalize()
-                    coord = atom.coord
-                    a = Atom(element, coord)
+                    a = Atom(element, atom.coord)
                     r.add_atom(a)
                 c.add_residue(r)
             protein.add_chain(c)
     return protein
 
-# Visualisierung der Proteinstruktur
-
+# 4. Protein in 3D visualisieren mit verschiedenen Farbmodi
 def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode):
-    import plotly.graph_objects as go
-    import numpy as np
-    from collections import defaultdict
-
     atoms_by_group = defaultdict(list)
 
     for chain in protein.chains:
@@ -93,86 +87,93 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
             for atom in residue.atoms:
                 if selected_elements and atom.element not in selected_elements:
                     continue
-                key = atom.element if color_mode == "Nach Element" else chain.chain_id
-                atoms_by_group[(key, chain.chain_id, atom.element)].append(atom.coord)
+                if color_mode == "Nach Kette":
+                    key = chain.chain_id
+                elif color_mode == "Nach Element":
+                    key = atom.element
+                else:
+                    key = (chain.chain_id, atom.element)
+                atoms_by_group[key].append(atom.coord)
 
     element_colors = {
         'H': 'white', 'C': 'gray', 'N': 'blue', 'O': 'red', 'S': 'yellow',
         'P': 'orange', 'Fe': 'darkorange', 'Zn': 'purple', 'Cl': 'green',
         'Na': 'cyan', 'K': 'violet', 'Ca': 'lime', 'Mg': 'teal'
     }
+    chain_colors = {
+        cid: col for cid, col in zip(
+            sorted(set(chain.chain_id for chain in protein.chains)),
+            ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+        )
+    }
 
-    chain_palette = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-    chain_colors = {}
     fig = go.Figure()
 
-    for i, ((group, chain_id, element), coords) in enumerate(atoms_by_group.items()):
+    for key, coords in atoms_by_group.items():
         coords = np.array(coords)
-        if color_mode == "Nach Element":
-            color = element_colors.get(group, 'black')
+        if len(coords) == 0:
+            continue
+
+        if color_mode == "Nach Kette":
+            color = chain_colors.get(key, 'gray')
+            name = f"Kette {key}"
+            line_color = color
+        elif color_mode == "Nach Element":
+            color = element_colors.get(key, 'black')
+            name = f"Element {key}"
+            line_color = color
         else:
-            if group not in chain_colors:
-                chain_colors[group] = chain_palette[len(chain_colors) % len(chain_palette)]
-            color = chain_colors[group]
+            chain_id, element = key
+            color = element_colors.get(element, 'black')
+            line_color = chain_colors.get(chain_id, 'gray')
+            name = f"{chain_id} - {element}"
 
         fig.add_trace(go.Scatter3d(
             x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
             mode='markers',
-            marker=dict(size=4, color=color),
-            name=f'Kette {chain_id} - {element}'
+            marker=dict(size=4, color=color, line=dict(width=2 if color_mode == "Kombiniert (Kette + Element)" else 0, color=line_color)),
+            name=name
         ))
 
     fig.update_layout(
-        title='3D-Struktur: Ketten & Elemente',
-        width=800,
-        height=700,
+        title='3D Proteinstruktur', width=800, height=700,
         scene=dict(xaxis_title='X', yaxis_title='Y', zaxis_title='Z'),
         legend=dict(itemsizing='constant')
     )
 
     st.plotly_chart(fig)
 
-# Streamlit GUI
+# 5. Streamlit GUI
+st.title("Proteinstruktur-Analyse")
+uploaded_file = st.file_uploader("Wähle eine PDB-Datei", type="pdb")
 
-def run_gui():
-    st.title("Proteinstruktur-Analyse")
-    st.write("Lade eine PDB-Datei hoch:")
+if uploaded_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdb") as tmp:
+        tmp.write(uploaded_file.read())
+        tmp_path = tmp.name
 
-    if st.button("Zurücksetzen"):
-        for key in st.session_state.keys():
-            del st.session_state[key]
-        st.experimental_rerun()
+    protein = parse_pdb(tmp_path)
+    title = extract_title_from_pdb(tmp_path)
+    weight = protein.calculate_molecular_weight()
 
-    uploaded_file = st.file_uploader("Wähle eine PDB-Datei", type="pdb")
+    st.info(f"**Proteinname:** {title}")
+    st.success(f"Molekulargewicht: {weight:.2f} Da")
 
-    if uploaded_file:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdb") as tmp:
-            tmp.write(uploaded_file.read())
-            tmp_path = tmp.name
+    all_chains = sorted(set(chain.chain_id for chain in protein.chains))
+    all_elements = sorted(set(atom.element for atom in protein.get_all_atoms()))
 
-        protein = parse_pdb(tmp_path)
-        title = extract_title_from_pdb(tmp_path)
-        st.info(f"**Proteinname laut TITLE-Eintrag:** {title}")
+    if len(all_chains) > 1:
+        selected_chains = st.multiselect("Wähle Ketten aus:", options=all_chains, default=all_chains)
+    else:
+        selected_chains = all_chains
 
-        weight = protein.calculate_molecular_weight()
-        st.success(f"Molekulargewicht: {weight:.2f} Da")
+    selected_elements = st.multiselect("Wähle Elemente aus:", options=all_elements, default=all_elements)
 
-        all_chains = sorted(set(chain.chain_id for chain in protein.chains))
-        all_elements = sorted(set(atom.element for atom in protein.get_all_atoms()))
+    color_mode = st.radio("Farbmodus wählen", ["Nach Kette", "Nach Element", "Kombiniert (Kette + Element)"], horizontal=True)
 
-        if len(all_chains) > 1:
-            if "selected_chains" not in st.session_state:
-                st.session_state.selected_chains = all_chains
-            selected_chains = st.multiselect("Wähle Ketten aus:", options=all_chains, default=st.session_state.selected_chains, key="selected_chains")
-        else:
-            selected_chains = all_chains
+    st.write("### 3D-Struktur")
+    visualize_protein_3d(protein, selected_chains, selected_elements, color_mode)
 
-        selected_elements = st.multiselect("Wähle Elemente aus:", options=all_elements, default=all_elements, key="selected_elements")
-
-        color_mode = st.radio("Farbmodus für Visualisierung:", ["Nach Kette", "Nach Element"], key="color_mode")
-
-        st.write("### 3D-Struktur")
-        visualize_protein_3d(protein, selected_chains, selected_elements, color_mode)
 
 if __name__ == '__main__':
     run_gui()
