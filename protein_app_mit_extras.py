@@ -144,36 +144,36 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
     st.plotly_chart(fig)
 
 # 5. Streamlit GUI
-st.title("Proteinstruktur-Analyse")
-uploaded_file = st.file_uploader("Wähle eine PDB-Datei", type="pdb")
+def run_gui():
+    st.title("Proteinstruktur-Analyse")
+    uploaded_file = st.file_uploader("Wähle eine PDB-Datei", type="pdb")
+    
+    if uploaded_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdb") as tmp:
+            tmp.write(uploaded_file.read())
+            tmp_path = tmp.name
 
-if uploaded_file:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdb") as tmp:
-        tmp.write(uploaded_file.read())
-        tmp_path = tmp.name
+        protein = parse_pdb(tmp_path)
+        title = extract_title_from_pdb(tmp_path)
+        weight = protein.calculate_molecular_weight()
 
-    protein = parse_pdb(tmp_path)
-    title = extract_title_from_pdb(tmp_path)
-    weight = protein.calculate_molecular_weight()
+        st.info(f"**Proteinname:** {title}")
+        st.success(f"Molekulargewicht: {weight:.2f} Da")
 
-    st.info(f"**Proteinname:** {title}")
-    st.success(f"Molekulargewicht: {weight:.2f} Da")
+        all_chains = sorted(set(chain.chain_id for chain in protein.chains))
+        all_elements = sorted(set(atom.element for atom in protein.get_all_atoms()))
 
-    all_chains = sorted(set(chain.chain_id for chain in protein.chains))
-    all_elements = sorted(set(atom.element for atom in protein.get_all_atoms()))
+        if len(all_chains) > 1:
+            selected_chains = st.multiselect("Wähle Ketten aus:", options=all_chains, default=all_chains)
+        else:
+            selected_chains = all_chains
 
-    if len(all_chains) > 1:
-        selected_chains = st.multiselect("Wähle Ketten aus:", options=all_chains, default=all_chains)
-    else:
-        selected_chains = all_chains
+        selected_elements = st.multiselect("Wähle Elemente aus:", options=all_elements, default=all_elements)
 
-    selected_elements = st.multiselect("Wähle Elemente aus:", options=all_elements, default=all_elements)
+        color_mode = st.radio("Farbmodus wählen", ["Nach Kette", "Nach Element", "Kombiniert (Kette + Element)"], horizontal=True)
 
-    color_mode = st.radio("Farbmodus wählen", ["Nach Kette", "Nach Element", "Kombiniert (Kette + Element)"], horizontal=True)
-
-    st.write("### 3D-Struktur")
-    visualize_protein_3d(protein, selected_chains, selected_elements, color_mode)
-
+        st.write("### 3D-Struktur")
+        visualize_protein_3d(protein, selected_chains, selected_elements, color_mode)
 
 if __name__ == '__main__':
     run_gui()
