@@ -1,4 +1,4 @@
-Zur Erstellung der Python-Anwendung zur Proteinstrukturanalyse wurde die KI-Anwendung ChatGPT von OpenAI genutzt. In iterativen Prompts wurden dabei sowohl technische als auch konzeptionelle Fragen zur objektorientierten Strukturierung, GUI-Entwicklung mit Streamlit, Datenanalyse mittels Biopython sowie 3D-Visualisierung geklärt. Die Zusammenarbeit diente ausschließlich der Unterstützung bei der Programmierung. Die gestellen Prompts sind im folgenden aufgeführt. 
+Zur Erstellung der Python-Anwendung zur Proteinstrukturanalyse wurde die KI-Anwendung ChatGPT von OpenAI genutzt. In iterativen Prompts wurden dabei sowohl technische als auch konzeptionelle Fragen zur objektorientierten Strukturierung, GUI-Entwicklung mit Streamlit, Datenanalyse mittels Biopython sowie 3D-Visualisierung geklärt. Die gestellen Prompts sind im folgenden aufgeführt. 
 
 1. "Erstelle eine erste Übersicht, wie ich hier vorgehen muss: Projekt 4: Analyse von Proteinstrukturdaten [...]" (25.05.2025)
 2. "Erstelle einen ersten Lösungsvorschlag für diese Aufgabe. Verwende Streamlit für das GUI." (25.05.2025)
