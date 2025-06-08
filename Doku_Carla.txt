@@ -3,3 +3,4 @@ Zur Erstellung der Python-Anwendung zur Proteinstrukturanalyse wurde die KI-Anwe
 1. "Erstelle eine erste Übersicht, wie ich hier vorgehen muss: Projekt 4: Analyse von Proteinstrukturdaten [...]" (25.05.2025)
 2. "Erstelle einen ersten Lösungsvorschlag für diese Aufgabe. Verwende Streamlit für das GUI." (25.05.2025)
 3. "Bitte Code so verändern, dass es einen Reset-Button gibt, Titel richtig groß/klein, Kettenauswahl nur wenn mehrere vorhanden, User soll auswählen können, wie die Legende bzw. Farbauswahl aussieht, z. B. mit anklickbaren Boxen" (07.06.2025)
+4. "Kürze den Code." (07.06.2025)
