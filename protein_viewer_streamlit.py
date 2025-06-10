@@ -136,10 +136,20 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
         ))
 
     # Achsen hinzufügen
-    axis_len = 20
-    fig.add_trace(go.Scatter3d(x=[0, axis_len], y=[0, 0], z=[0, 0], mode='lines', line=dict(color='red', width=4), name='X-Achse'))
-    fig.add_trace(go.Scatter3d(x=[0, 0], y=[0, axis_len], z=[0, 0], mode='lines', line=dict(color='green', width=4), name='Y-Achse'))
-    fig.add_trace(go.Scatter3d(x=[0, 0], y=[0, 0], z=[0, axis_len], mode='lines', line=dict(color='blue', width=4), name='Z-Achse'))
+    axis_len = 60  
+
+     fig.add_trace(go.Scatter3d(
+    x=[0, axis_len], y=[0, 0], z=[0, 0], mode='lines',
+    line=dict(color='red', width=8), showlegend=False, name='X'
+    ))
+    fig.add_trace(go.Scatter3d(
+    x=[0, 0], y=[0, axis_len], z=[0, 0], mode='lines',
+    line=dict(color='green', width=8), showlegend=False, name='Y'
+    ))
+    fig.add_trace(go.Scatter3d(
+    x=[0, 0], y=[0, 0], z=[0, axis_len], mode='lines',
+    line=dict(color='blue', width=8), showlegend=False, name='Z'
+    ))
 
     fig.update_layout(
         title='3D Proteinstruktur', width=800, height=700,
