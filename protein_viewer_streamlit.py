@@ -106,7 +106,7 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
                 atoms_by_group[key].append(atom.coord)
 
     element_colors = {
-        'H': 'white', 'C': 'darkolivegreen', 'N': 'blue', 'O': 'red', 'S': 'yellow',
+        'H': 'white', 'C': 'green', 'N': 'blue', 'O': 'red', 'S': 'yellow',
         'P': 'orange', 'Fe': 'darkgray', 'Zn': 'purple', 'Cl': 'green',
         'Na': 'deepskyblue', 'K': 'violet', 'Ca': 'limegreen', 'Mg': 'teal'
     }
