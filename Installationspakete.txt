@@ -1,2 +1,3 @@
 # Bevor die App ausgeführt werden kann müssen folgende Pakete installiert sein, mit folgendem Befehl: 
-# pip install biopython streamlit matplotlib periodictable
+# pip install biopython streamlit plotly periodictable numpy
+
