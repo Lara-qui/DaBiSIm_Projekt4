@@ -1,42 +1,42 @@
 # 1. Imports und Setup
 import os                                   # ermöglicht den Zugriff auf die heruntergeladene Datei
 import tempfile                             # ermöglicht den Umgang mit temporären Dateien
-import numpy as np
+import numpy as np                          # numerisches Python, für Vektoroperationen
 import streamlit as st                      # bildet die GUI Umgebung
 from Bio.PDB import PDBParser               # für den Import einer PDB-Datei
 from periodictable import elements          # Information über die Atommasse von Elementen
 import plotly.graph_objects as go           # für 3D-plotting
-from collections import defaultdict
+from collections import defaultdict         # für Gruppierung von Atomen nach Eigenschaft
 
 # 2. Datenklassen für Proteinstruktur
-class Atom:                                 # ordnet dem Begriff "Atom" Koordinaten und das Element zu
+class Atom:
     def __init__(self, element, coord):
-        self.element = element
-        self.coord = coord
+        self.element = element              # chemisches Element z. B. C, H, O
+        self.coord = coord                  # 3D-Koordinaten (numpy array)
 
-    def get_mass(self):                     # ordnet dem Begriff "Atom" die Atommasse abhängig vom Element zu
+    def get_mass(self):                     # gibt Atommasse zurück
         try:
             return getattr(elements, self.element).mass
         except AttributeError:
             return 0.0
 
-class Residue:                              # dem Residuum wird ein Name (Aminosäure) und die zugehörigen Atome zugeordnet
+class Residue:
     def __init__(self, name):
-        self.name = name
-        self.atoms = []
+        self.name = name                    # z. B. GLY, ALA, ARG
+        self.atoms = []                     # Liste der enthaltenen Atome
 
     def add_atom(self, atom):
         self.atoms.append(atom)
 
-class Chain:                                # alpha-/beta-Ketten werden den zugehörigen Residuen zugeordnet
+class Chain:
     def __init__(self, chain_id):
-        self.chain_id = chain_id
+        self.chain_id = chain_id            # ID der Kette (z. B. A, B)
         self.residues = []
 
     def add_residue(self, residue):
         self.residues.append(residue)
 
-class Protein:                              # dem Protein werden die Ketten zugeordnet, alle Atome einzeln zugeordnet und die Summe der Atommassen aller zugeordneten Atome berechnet
+class Protein:
     def __init__(self, name):
         self.name = name
         self.chains = []
@@ -58,7 +58,7 @@ def extract_title_from_pdb(file_path):
                 return line[10:].strip().capitalize()
     return "Unbekannter Proteinname"
 
-def parse_pdb(pdb_file):                    # Daten aus PDB-Datei werden gelesen, QUIET=True unterdrückt Warnungen in Fehlern der Datei, Dateiname wird dem Protein zugeordnet, Protein-Objekt wird erstellt & Ketten, Residuen, Elemente & Atomkoordinaten integriert (+Elementnamen standardisiert)
+def parse_pdb(pdb_file):                    # PDB-Datei wird geparst
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure("protein", pdb_file)
     protein = Protein(os.path.basename(pdb_file))
@@ -76,8 +76,8 @@ def parse_pdb(pdb_file):                    # Daten aus PDB-Datei werden gelesen
             protein.add_chain(c)
     return protein
 
-# 4. Protein in 3D visualisieren mit Achsen, Farben und Export
-def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode, protein_title):       # 3D-Scatterplot des Proteins wird erstellt
+# 4. Protein in 3D visualisieren
+def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode, protein_title):
     atoms_by_group = defaultdict(list)
 
     for chain in protein.chains:
@@ -91,6 +91,8 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
                     key = chain.chain_id
                 elif color_mode == "Nach Element":
                     key = atom.element
+                elif color_mode == "Nach Residuum":
+                    key = residue.name
                 else:
                     key = (chain.chain_id, atom.element)
                 atoms_by_group[key].append(atom.coord)
@@ -100,6 +102,7 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
         'P': 'orange', 'Fe': 'darkgray', 'Zn': 'purple', 'Cl': 'green',
         'Na': 'deepskyblue', 'K': 'violet', 'Ca': 'limegreen', 'Mg': 'teal'
     }
+
     chain_colors = {
         cid: col for cid, col in zip(
             sorted(set(chain.chain_id for chain in protein.chains)),
@@ -117,50 +120,45 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
         if color_mode == "Nach Kette":
             color = chain_colors.get(key, 'gray')
             name = f"Kette {key}"
-            line_color = color
         elif color_mode == "Nach Element":
             color = element_colors.get(key, 'black')
             name = f"Element {key}"
-            line_color = color
+        elif color_mode == "Nach Residuum":
+            color = 'gold'  # Standardfarbe für Residuen
+            name = f"Residuum {key}"
         else:
             chain_id, element = key
             color = element_colors.get(element, 'black')
-            line_color = chain_colors.get(chain_id, 'gray')
             name = f"{chain_id} - {element}"
 
         fig.add_trace(go.Scatter3d(
             x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
             mode='markers',
-            marker=dict(size=4, color=color, line=dict(width=2 if color_mode == "Kombiniert (Kette + Element)" else 0, color=line_color)),
+            marker=dict(size=4, color=color),
             name=name
         ))
 
-    # Achsen hinzufügen
-    axis_len = 60  
-
-     fig.add_trace(go.Scatter3d(
-    x=[0, axis_len], y=[0, 0], z=[0, 0], mode='lines',
-    line=dict(color='red', width=8), showlegend=False, name='X'
-    ))
-    fig.add_trace(go.Scatter3d(
-    x=[0, 0], y=[0, axis_len], z=[0, 0], mode='lines',
-    line=dict(color='green', width=8), showlegend=False, name='Y'
-    ))
-    fig.add_trace(go.Scatter3d(
-    x=[0, 0], y=[0, 0], z=[0, axis_len], mode='lines',
-    line=dict(color='blue', width=8), showlegend=False, name='Z'
-    ))
-
+    # Layout mit Achsenbeschriftung aber ohne sichtbare extra Linien
     fig.update_layout(
         title='3D Proteinstruktur', width=800, height=700,
         scene=dict(
-            xaxis=dict(title='X', showgrid=True),
-            yaxis=dict(title='Y', showgrid=True),
-            zaxis=dict(title='Z', showgrid=True)
+            xaxis=dict(title='X'),
+            yaxis=dict(title='Y'),
+            zaxis=dict(title='Z')
         ),
-        legend=dict(itemsizing='constant')
+        legend=dict(itemsizing='constant'),
+        margin=dict(l=0, r=0, b=0, t=40),
     )
 
+    # Reset-Knopf erzeugt Standard-Kameraansicht
+    reset_view = dict(
+        camera=dict(
+            eye=dict(x=1.5, y=1.5, z=1.5)
+        )
+    )
+    fig.update_layout(scene_camera=reset_view['camera'])
+
+    # HTML Export mit eingebetteter Ansicht
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_html:
         fig.write_html(tmp_html.name)
         st.download_button(
@@ -170,9 +168,9 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
             mime='text/html'
         )
 
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
 
-# 5. Streamlit GUI
+# 5. Streamlit GUI starten
 def run_gui():
     st.title("Proteinstruktur-Analyse")
     uploaded_file = st.file_uploader("Wähle eine PDB-Datei", type="pdb")
@@ -198,7 +196,16 @@ def run_gui():
             selected_chains = all_chains
 
         selected_elements = st.multiselect("Wähle Elemente aus:", options=all_elements, default=all_elements)
-        color_mode = st.radio("Farbmodus wählen", ["Nach Kette", "Nach Element", "Kombiniert (Kette + Element)"], horizontal=True)
+
+        # Auswahlmöglichkeit für Farbcodierung inkl. Residuen
+        color_mode = st.radio(
+            "Farbmodus wählen", 
+            ["Nach Kette", "Nach Element", "Kombiniert (Kette + Element)", "Nach Residuum"], 
+            horizontal=True
+        )
+
+        if st.button("Ansicht zurücksetzen"):
+            st.experimental_rerun()
 
         st.write("### 3D-Struktur")
         visualize_protein_3d(protein, selected_chains, selected_elements, color_mode, title)
