@@ -80,10 +80,18 @@ def parse_pdb(pdb_file):                    # PDB-Datei wird geparst
 def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode, protein_title):
     atoms_by_group = defaultdict(list)
 
+    # Unique Farben für Residuen
+    residue_colors = {}
+    index = 0
+    color_palette = ['gold', 'cyan', 'magenta', 'lime', 'orange', 'pink']  # Erweiterbare Liste an Farben
+
     for chain in protein.chains:
         if selected_chains and chain.chain_id not in selected_chains:
             continue
         for residue in chain.residues:
+            if color_mode == "Nach Residuum" and residue.name not in residue_colors:
+                residue_colors[residue.name] = color_palette[index % len(color_palette)]
+                index += 1
             for atom in residue.atoms:
                 if selected_elements and atom.element not in selected_elements:
                     continue
@@ -98,7 +106,7 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
                 atoms_by_group[key].append(atom.coord)
 
     element_colors = {
-        'H': 'white', 'C': 'darkorange', 'N': 'blue', 'O': 'red', 'S': 'yellow',
+        'H': 'white', 'C': 'black', 'N': 'blue', 'O': 'red', 'S': 'yellow',
         'P': 'orange', 'Fe': 'darkgray', 'Zn': 'purple', 'Cl': 'green',
         'Na': 'deepskyblue', 'K': 'violet', 'Ca': 'limegreen', 'Mg': 'teal'
     }
@@ -124,8 +132,8 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
             color = element_colors.get(key, 'black')
             name = f"Element {key}"
         elif color_mode == "Nach Residuum":
-            color = 'gold'  # Standardfarbe für Residuen
-            name = f"Residuum {key}"
+            color = residue_colors.get(key, 'gold')
+            name = key  # Nur den Residue-Namen anzeigen
         else:
             chain_id, element = key
             color = element_colors.get(element, 'black')
@@ -150,13 +158,9 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
         margin=dict(l=0, r=0, b=0, t=40),
     )
 
-    # Reset-Knopf erzeugt Standard-Kameraansicht
-    reset_view = dict(
-        camera=dict(
-            eye=dict(x=1.5, y=1.5, z=1.5)
-        )
-    )
-    fig.update_layout(scene_camera=reset_view['camera'])
+    # Reset-Kameraansicht
+    if st.button("Ansicht zurücksetzen"):
+        fig.update_layout(scene_camera=dict(eye=dict(x=1.5, y=1.5, z=1.5)))
 
     # HTML Export mit eingebetteter Ansicht
     with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_html:
@@ -173,6 +177,8 @@ def visualize_protein_3d(protein, selected_chains, selected_elements, color_mode
 # 5. Streamlit GUI starten
 def run_gui():
     st.title("Proteinstruktur-Analyse")
+
+    # Datei-Upload
     uploaded_file = st.file_uploader("Wähle eine PDB-Datei", type="pdb")
 
     if uploaded_file:
@@ -203,9 +209,6 @@ def run_gui():
             ["Nach Kette", "Nach Element", "Kombiniert (Kette + Element)", "Nach Residuum"], 
             horizontal=True
         )
-
-        if st.button("Ansicht zurücksetzen"):
-            st.experimental_rerun()
 
         st.write("### 3D-Struktur")
         visualize_protein_3d(protein, selected_chains, selected_elements, color_mode, title)
